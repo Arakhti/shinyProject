@@ -79,7 +79,7 @@ ui <- dashboardPage(
              fluidRow(
                column(4, 
                       selectInput(inputId = "columnA", 
-                                  "Colonne A", 
+                                  "Variable 1", 
                                   c("Age" = "Age",
                                     "Sex" = "Sex",
                                     "ChestPainType" = "ChestPainType",
@@ -94,7 +94,7 @@ ui <- dashboardPage(
                                     "HeartDisease" = "HeartDisease"))),
                column(4, 
                       selectInput(inputId = "columnB", 
-                                  "Colonne B", 
+                                  "Variable 2", 
                                   c("Age" = "Age",
                                     "Sex" = "Sex",
                                     "ChestPainType" = "ChestPainType",
@@ -110,13 +110,40 @@ ui <- dashboardPage(
                
              ),
              fluidRow(
-               column(4, tableOutput("statsSummaryBivar")),
-               column(6, plotOutput("boxPlotsParalleles"))
-             )
+               conditionalPanel(condition = "output.typeOfMix == 'QuantiQuanti'", 
+                                column(12, plotOutput("nuagePoints")), 
+                                column(12,align="center",textOutput("correlation"))
+               ),
+               conditionalPanel(condition = "output.typeOfMix == QuantiQuali'", 
+                                column(4, tableOutput("statsSummaryBivar")),
+                                column(6, plotOutput("boxPlotsParalleles"))
+               )
+
+             ),
+     tags$hr(),
+     fluidRow(
+       column(4, 
+              selectInput(inputId = "columnC", 
+                          "Variable", 
+                          c("Age" = "Age",
+                            "Sex" = "Sex",
+                            "ChestPainType" = "ChestPainType",
+                            "RestingBP" = "RestingBP",
+                            "Cholesterol" = "Cholesterol",
+                            "FastingBS" = "FastingBS",
+                            "RestingECG" = "RestingECG",
+                            "MaxHR" = "MaxHR",
+                            "ExerciseAngina" = "ExerciseAngina",
+                            "Oldpeak" = "Oldpeak",
+                            "ST_Slope" = "ST_Slope"
+                            ))),
+       column(12, plotOutput("HeartVsall"))
+       
      )
             
         
   )
+)
 )
 )
 
@@ -238,9 +265,11 @@ server <- function(input, output){
     input$columnB
   })
   
+
   rvBivar <- reactiveValues(
                        typeOfDataA = "quanti",
                        typeOfDataB = "quanti",
+                       typeOfMix = "QuantiQuanti"
                        )
   
   # Determine le type de la variable (qualitative / quantitative)
@@ -312,9 +341,6 @@ server <- function(input, output){
     if (affiche) {
       newData <- data()
       newData[, columnQuali] <- lapply(newData[, columnQuali], as.character)
-      #table <- mutate(table, "{{columnA()}}" := as.character({{columnA()}}))
-      selection <- data() %>% select(columnQuali, columnQuanti)
-      data.stack <- melt(selection, id.vars = columnQuali)
       qplot(x = !!sym(columnQuali), y = !!sym(columnQuanti), data = data(),
             xlab = columnQuali, ylab = columnQuanti,
             geom=c("boxplot", "jitter"), fill = factor(!!sym(columnQuali))) +
@@ -327,7 +353,53 @@ server <- function(input, output){
     }
   })
   
+  typeOfMix <- reactive({
+    if (rvBivar$typeOfDataA == "quali" && rvBivar$typeOfDataB == "quali") {
+      "QualiQuali"
+    } else if (rvBivar$typeOfDataA == "quanti" && rvBivar$typeOfDataB == "quanti") {
+      'QuantiQuanti'
+    } else {
+      "QuantiQuali"
+    }
+  })
   
+  output$typeOfMix <- reactive({
+    typeOfMix()
+  })
+  outputOptions(output, 'typeOfMix', suspendWhenHidden=FALSE)
+
+  output$nuagePoints <- renderPlot({
+    # Simple nuage de point EF vs CA
+    options(scipen=999)
+    x.var = columnA(); y.var = columnB();
+    plot(x = data()[, x.var], y = data()[, y.var], col = "blue",
+         las = 2, cex.axis = 0.7,
+         main = paste(y.var, "en fonction de", x.var),
+         xlab = x.var, ylab = y.var, cex.lab = 1.2
+    )
+    options(scipen=0)
+  })
+
+  
+  #For prediction
+  newdata <- reactive({
+    categories= c('Sex', 'ChestPainType','RestingECG', 'ExerciseAngina','ST_Slope')
+    dummy.data.frame(data(), names=categories, sep="_")
+  })
+  
+  output$correlation<- renderText({
+    x.var = columnA(); y.var = columnB();
+    paste("coefficient de correlation est:", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
+  })
+  
+  columnC <- eventReactive(input$columnC, {
+    input$columnC
+  })
+  
+  output$HeartVsall <-renderPlot({
+    column <- sym(columnC())
+    ggplot(data())+ geom_bar(aes(x = !!column, fill= factor(HeartDisease)), position=position_dodge())
+  })
   
   
   

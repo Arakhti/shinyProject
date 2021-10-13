@@ -77,7 +77,7 @@ ui <- dashboardPage(
              fluidRow(
                column(4, 
                       selectInput(inputId = "columnA", 
-                                  "Colonne A", 
+                                  "Variable 1", 
                                   c("Age" = "Age",
                                     "Sex" = "Sex",
                                     "ChestPainType" = "ChestPainType",
@@ -92,7 +92,7 @@ ui <- dashboardPage(
                                     "HeartDisease" = "HeartDisease"))),
                column(4, 
                       selectInput(inputId = "columnB", 
-                                  "Colonne B", 
+                                  "Variable 2", 
                                   c("Age" = "Age",
                                     "Sex" = "Sex",
                                     "ChestPainType" = "ChestPainType",
@@ -109,12 +109,35 @@ ui <- dashboardPage(
              ),
              
              fluidRow(
-               column(12, plotOutput("nuagePoints"))),
-             textOutput("correlation")
+               column(12, plotOutput("nuagePoints")),
+               column(12,align="center",textOutput("correlation")),
+     ),
+     
+     tags$hr(),
+     fluidRow(
+       column(4, 
+              selectInput(inputId = "columnC", 
+                          "Variable", 
+                          c("Age" = "Age",
+                            "Sex" = "Sex",
+                            "ChestPainType" = "ChestPainType",
+                            "RestingBP" = "RestingBP",
+                            "Cholesterol" = "Cholesterol",
+                            "FastingBS" = "FastingBS",
+                            "RestingECG" = "RestingECG",
+                            "MaxHR" = "MaxHR",
+                            "ExerciseAngina" = "ExerciseAngina",
+                            "Oldpeak" = "Oldpeak",
+                            "ST_Slope" = "ST_Slope"
+                            ))),
+       column(12, plotOutput("HeartVsall"))
+       
+     
      )
             
         
   )
+)
 )
 )
 
@@ -257,8 +280,16 @@ server <- function(input, output){
   output$correlation<- renderText({
     x.var = columnA(); y.var = columnB();
     paste("coefficient de correlation est:", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
-  }) 
+  })
   
+  columnC <- eventReactive(input$columnC, {
+    input$columnC
+  })
+  
+  output$HeartVsall <-renderPlot({
+    column <- sym(columnC())
+    ggplot(data())+ geom_bar(aes(x = !!column, fill= factor(HeartDisease)), position=position_dodge())
+  })
   
   
   

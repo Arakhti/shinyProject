@@ -60,10 +60,16 @@ ui <- dashboardPage(
             fluidRow(
               column(6, plotOutput("gender")),
               column(6, tableOutput("table_quali")),
-              column(6, plotOutput("boxPlot"))
+              conditionalPanel(
+                condition = "input.column1 == 'Age' || input.column1 == 'RestingBP'  || input.column1 == 'Cholesterol' || input.column1 == 'MaxHR' ||  input.column1 == 'Oldpeak'",
+                column(6, plotOutput("boxPlot"))
+                
+              )
+             
             ),
+            tags$hr(),
             fluidRow(
-              column(6, tableOutput("summary"))
+              column(12,align="center", tableOutput("summary"))
             )
           ),
      tabItem(tabName="Bi",

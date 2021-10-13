@@ -114,9 +114,9 @@ ui <- dashboardPage(
                                 column(12, plotOutput("nuagePoints")), 
                                 column(12,align="center",textOutput("correlation"))
                ),
-               conditionalPanel(condition = "output.typeOfMix == QuantiQuali'", 
+               conditionalPanel(condition = "output.typeOfMix == 'QuantiQuali'", 
                                 column(4, tableOutput("statsSummaryBivar")),
-                                column(6, plotOutput("boxPlotsParalleles"))
+                                column(8, plotOutput("boxPlotsParalleles"))
                )
 
              ),

@@ -106,7 +106,11 @@ ui <- dashboardPage(
                                     "ST_Slope" = "ST_Slope",
                                     "HeartDisease" = "HeartDisease"))),
                
-             )
+             ),
+             
+             fluidRow(
+               column(12, plotOutput("nuagePoints"))),
+             textOutput("correlation")
      )
             
         
@@ -232,6 +236,28 @@ server <- function(input, output){
     input$columnB
   })
   
+  output$nuagePoints <- renderPlot({
+    # Simple nuage de point EF vs CA
+    options(scipen=999)
+    x.var = columnA(); y.var = columnB();
+    plot(x = data()[, x.var], y = data()[, y.var], col = "blue",
+         las = 2, cex.axis = 0.7,
+         main = paste(y.var, "en fonction de", x.var),
+         xlab = x.var, ylab = y.var, cex.lab = 1.2
+    )
+    options(scipen=0)
+  })
+  
+  #For prediction
+  newdata <- reactive({
+    categories= c('Sex', 'ChestPainType','RestingECG', 'ExerciseAngina','ST_Slope')
+    dummy.data.frame(data(), names=categories, sep="_")
+  })
+  
+  output$correlation<- renderText({
+    x.var = columnA(); y.var = columnB();
+    paste("coefficient de correlation est:", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
+  }) 
   
   
   

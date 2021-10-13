@@ -75,9 +75,37 @@ ui <- dashboardPage(
      tabItem(tabName="Bi",
              h1("Statistiques Bivariées"),
              fluidRow(
-               column(12, plotOutput("AgeSex")),
-               column(12, plotOutput("ChestPainTypeSex"))
-              
+               column(4, 
+                      selectInput(inputId = "columnA", 
+                                  "Colonne A", 
+                                  c("Age" = "Age",
+                                    "Sex" = "Sex",
+                                    "ChestPainType" = "ChestPainType",
+                                    "RestingBP" = "RestingBP",
+                                    "Cholesterol" = "Cholesterol",
+                                    "FastingBS" = "FastingBS",
+                                    "RestingECG" = "RestingECG",
+                                    "MaxHR" = "MaxHR",
+                                    "ExerciseAngina" = "ExerciseAngina",
+                                    "Oldpeak" = "Oldpeak",
+                                    "ST_Slope" = "ST_Slope",
+                                    "HeartDisease" = "HeartDisease"))),
+               column(4, 
+                      selectInput(inputId = "columnB", 
+                                  "Colonne B", 
+                                  c("Age" = "Age",
+                                    "Sex" = "Sex",
+                                    "ChestPainType" = "ChestPainType",
+                                    "RestingBP" = "RestingBP",
+                                    "Cholesterol" = "Cholesterol",
+                                    "FastingBS" = "FastingBS",
+                                    "RestingECG" = "RestingECG",
+                                    "MaxHR" = "MaxHR",
+                                    "ExerciseAngina" = "ExerciseAngina",
+                                    "Oldpeak" = "Oldpeak",
+                                    "ST_Slope" = "ST_Slope",
+                                    "HeartDisease" = "HeartDisease"))),
+               
              )
      )
             
@@ -194,6 +222,15 @@ server <- function(input, output){
     }
   })
   
+  
+  ###### Analyse Bivariée #####
+  columnA <- eventReactive(input$columnA, {
+    input$columnA
+  })
+  
+  columnB <- eventReactive(input$columnB, {
+    input$columnB
+  })
   
   
   

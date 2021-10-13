@@ -4,6 +4,8 @@ library(shinydashboard)
 library(shinyWidgets)
 library(plotly)
 library(lessR)
+library(dplyr)
+library(reshape2)
 ##########################################################
 ########## L'interface##################################
 
@@ -106,6 +108,10 @@ ui <- dashboardPage(
                                     "ST_Slope" = "ST_Slope",
                                     "HeartDisease" = "HeartDisease"))),
                
+             ),
+             fluidRow(
+               column(4, tableOutput("statsSummaryBivar")),
+               column(6, plotOutput("boxPlotsParalleles"))
              )
      )
             
@@ -230,6 +236,95 @@ server <- function(input, output){
   
   columnB <- eventReactive(input$columnB, {
     input$columnB
+  })
+  
+  rvBivar <- reactiveValues(
+                       typeOfDataA = "quanti",
+                       typeOfDataB = "quanti",
+                       )
+  
+  # Determine le type de la variable (qualitative / quantitative)
+  observeEvent(input$columnA, {
+    if (input$columnA %in% c("Age", "RestingBP", "Cholesterol", "MaxHR", "Oldpeak")){
+      rvBivar$typeOfDataA = "quanti"
+    } else {
+      rvBivar$typeOfDataA = "quali"
+    }
+  })
+  
+  # Determine le type de la variable (qualitative / quantitative)
+  observeEvent(input$columnB, {
+    if (input$columnB %in% c("Age", "RestingBP", "Cholesterol", "MaxHR", "Oldpeak")){
+      rvBivar$typeOfDataB = "quanti"
+    } else {
+      rvBivar$typeOfDataB = "quali"
+    }
+  })
+  
+  
+  QuantiQuali <- reactive({
+    affiche <- FALSE
+    columnQuali <- NULL
+    columnQuanti <- NULL
+    if (rvBivar$typeOfDataA == "quali" && rvBivar$typeOfDataB == "quanti") {
+      affiche <- TRUE
+      columnQuali <- columnA()
+      columnQuanti <- columnB()
+    }
+    else if (rvBivar$typeOfDataA == "quanti" && rvBivar$typeOfDataB == "quali") {
+      affiche <- TRUE
+      columnQuali <- columnB()
+      columnQuanti <- columnA()
+    }
+    list(affiche, columnQuali, columnQuanti)
+  })
+  
+  # Table Stats Quanti pour chaque classe de variable A quali
+  output$statsSummaryBivar <- renderTable({
+    quantiQualiValues <- QuantiQuali()
+    affiche <- quantiQualiValues[[1]]
+    columnQuali <- quantiQualiValues[[2]]
+    columnQuanti <- quantiQualiValues[[3]]
+
+    if (affiche) {
+      columnBSelection <- data()[,columnQuanti]
+      totalMean <- mean(columnBSelection)
+      totalSd <- sd(columnBSelection)
+      
+      tableStats <- data() %>% 
+        group_by_at(columnQuali) %>%
+        summarise(moyenne = mean(!!!syms(columnQuanti)), ecartType = sd(!!!syms(columnQuanti)))
+      colnames(tableStats) <- c(columnQuali, paste("Moyenne de ", columnQuanti), paste("Ecart-type de ", columnQuanti))
+      tableStats <- rbind(tableStats, c("Total", totalMean, totalSd))
+      tableStats
+    }
+    else {
+      NULL
+    }
+  })
+  
+  
+  output$boxPlotsParalleles <- renderPlot({
+    quantiQualiValues <- QuantiQuali()
+    affiche <- quantiQualiValues[[1]]
+    columnQuali <- quantiQualiValues[[2]]
+    columnQuanti <- quantiQualiValues[[3]]
+    if (affiche) {
+      newData <- data()
+      newData[, columnQuali] <- lapply(newData[, columnQuali], as.character)
+      #table <- mutate(table, "{{columnA()}}" := as.character({{columnA()}}))
+      selection <- data() %>% select(columnQuali, columnQuanti)
+      data.stack <- melt(selection, id.vars = columnQuali)
+      qplot(x = !!sym(columnQuali), y = !!sym(columnQuanti), data = data(),
+            xlab = columnQuali, ylab = columnQuanti,
+            geom=c("boxplot", "jitter"), fill = factor(!!sym(columnQuali))) +
+        theme(legend.title=element_blank())
+
+    }
+    
+    else {
+      NULL
+    }
   })
   
   

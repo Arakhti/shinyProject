@@ -6,6 +6,7 @@ library(plotly)
 library(lessR)
 library(dplyr)
 library(reshape2)
+library(DiscriMiner)
 ##########################################################
 ########## L'interface##################################
 
@@ -115,8 +116,11 @@ ui <- dashboardPage(
                                 column(12,align="center",textOutput("correlation"))
                ),
                conditionalPanel(condition = "output.typeOfMix == 'QuantiQuali'", 
-                                column(4, tableOutput("statsSummaryBivar")),
-                                column(8, plotOutput("boxPlotsParalleles"))
+                                column(4, 
+                                       fluidRow(column(8, tableOutput("statsSummaryBivar"))),
+                                       fluidRow(column(8,align="center", textOutput("correlationRatio")))),
+                                column(8, plotOutput("boxPlotsParalleles")),
+                                
                )
 
              ),
@@ -323,14 +327,17 @@ server <- function(input, output){
       tableStats <- data() %>% 
         group_by_at(columnQuali) %>%
         summarise(moyenne = mean(!!!syms(columnQuanti)), ecartType = sd(!!!syms(columnQuanti)))
+      tableStats = as.data.frame(tableStats)
       colnames(tableStats) <- c(columnQuali, paste("Moyenne de ", columnQuanti), paste("Ecart-type de ", columnQuanti))
       tableStats <- rbind(tableStats, c("Total", totalMean, totalSd))
+      
+      tableStats[,c(2,3)] <- tableStats[,c(2,3)] %>% mutate_if(is.character,as.numeric)
       tableStats
     }
     else {
       NULL
     }
-  })
+  }, digits = 2)
   
   
   output$boxPlotsParalleles <- renderPlot({
@@ -351,6 +358,22 @@ server <- function(input, output){
     else {
       NULL
     }
+  })
+  
+  
+  output$correlationRatio <- renderText({
+    quantiQualiValues <- QuantiQuali()
+    affiche <- quantiQualiValues[[1]]
+    columnQuali <- quantiQualiValues[[2]]
+    columnQuanti <- quantiQualiValues[[3]]
+    if (affiche) {
+
+      paste("Rapport de correlation : ", format(round(corRatio(data()[,columnQuanti], data()[,columnQuali]), 4), nsmall = 4))
+    }
+    else {
+      NULL
+    }
+
   })
   
   typeOfMix <- reactive({
@@ -400,8 +423,6 @@ server <- function(input, output){
     column <- sym(columnC())
     ggplot(data())+ geom_bar(aes(x = !!column, fill= factor(HeartDisease)), position=position_dodge())
   })
-  
-  
   
   
 }

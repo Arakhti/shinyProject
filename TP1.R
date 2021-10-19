@@ -7,10 +7,26 @@ library(lessR)
 library(dplyr)
 library(reshape2)
 library(DiscriMiner)
+library(caret)
 
 library('rcompanion')
 library(dummies)
 library(dplyr)
+
+
+columnslist <- c("Age" = "Age",
+                        "Sex" = "Sex",
+                        "ChestPainType" = "ChestPainType",
+                        "RestingBP" = "RestingBP",
+                        "Cholesterol" = "Cholesterol",
+                        "FastingBS" = "FastingBS",
+                        "RestingECG" = "RestingECG",
+                        "MaxHR" = "MaxHR",
+                        "ExerciseAngina" = "ExerciseAngina",
+                        "Oldpeak" = "Oldpeak",
+                        "ST_Slope" = "ST_Slope",
+                        "HeartDisease" = "HeartDisease")
+
 ##########################################################
 ########## L'interface##################################
 
@@ -26,7 +42,11 @@ ui <- dashboardPage(
                          menuSubItem("Bivariées",
                                      tabName = "Bi"),
                          selected = TRUE),
-                menuItem("Prediction", tabName="Prediction")
+                menuItem("Prediction", tabName="Prediction",
+                         menuSubItem("Régression Logistique",
+                                     tabName = "logit"),
+                         
+                         selected = TRUE)
                 
                 
                 )
@@ -139,13 +159,36 @@ ui <- dashboardPage(
         
   ),
   
-  tabItem(tabName="Prediction",
+  tabItem(tabName="SVM",
     h1("Prediction using SVM"),
     column(6,tableOutput("new"))
+  ),
+  tabItem(tabName="logit",
+          h1("Régression logistique"),
+          h4("Prédiction de HeartDisease en fonction des autres variables",tags$br(),
+             "Le dataset est divisé en training set (75%) et validation set (25%)"),
+          checkboxGroupInput(
+            "logistColumns",
+            "Colonnes utilisées pour la régression logistique",
+            choices = columnslist[-12],
+            selected = columnslist[-12],
+            inline = TRUE
+          ),
+          tags$hr(),
+          column(6,
+                 fluidRow(valueBoxOutput("trainingAcc")),
+                 p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
+                 fluidRow(tableOutput("trainingMatrix"))
+                 ),
+          column(6,
+                 fluidRow(valueBoxOutput("valAcc")),
+                 p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
+                 fluidRow(tableOutput("valMatrix"))
+          )
   )
 )
-)
-)
+))
+
 
 
 
@@ -433,6 +476,112 @@ server <- function(input, output){
     
     
   })
+  
+  ### Regression logistique ###
+  predLogist <- reactiveValues(confMatTrain = NULL,
+                               accuracyTrain = NULL,
+                               confMatVal = NULL,
+                               accuracyVal = NULL)
+  
+
+  logistColumns <- eventReactive(input$logistColumns, {
+    input$logistColumns
+  })
+
+  logisPred <- reactive({
+    dataFrame = data()
+    
+    # split data between training and validation set
+    spec = c(train = .75, validate = .25)
+    
+    set.seed(1)
+    g = sample(cut(
+      seq(nrow(dataFrame)), 
+      nrow(dataFrame)*cumsum(c(0,spec)),
+      labels = names(spec)
+    ))
+    res = split(dataFrame, g)
+
+    ### Training  ###
+    dfWithoutHeartDisease = subset(res$train, select = -c(HeartDisease))
+    # convert all columns to numeric
+    matrix <- data.matrix(data.frame(unclass(dfWithoutHeartDisease)))
+    # normalize data
+    df = data.frame(scale(matrix))
+    df = cbind(df, HeartDisease = res$train[,'HeartDisease'])
+    # train model
+    columsForRegression = paste(logistColumns(), collapse = " + ")
+    print(columsForRegression)
+    myFormula <- as.formula(paste("HeartDisease ~ ", columsForRegression))
+    
+    glm.fit <- glm(myFormula,
+                   data = df, family = binomial)
+    
+    glm.probs <- predict(glm.fit,type = "response")
+    glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
+    confMat = confusionMatrix(factor(glm.pred), factor(res$train[,'HeartDisease']))
+    #confMatDf = as.data.frame.matrix(confMat$table)
+    
+    ### Validation ###
+    dfWithoutHeartDiseaseVal = subset(res$validate, select = -c(HeartDisease))
+    # convert all columns to numeric
+    matrixVal <- data.matrix(data.frame(unclass(dfWithoutHeartDiseaseVal)))
+    # normalize data
+    dfVal = data.frame(scale(matrixVal))
+    # predict
+    glm.probsVal <- predict(glm.fit, newdata = dfVal ,type = "response")
+    glm.predVal <- ifelse(glm.probsVal > 0.5, 1, 0)
+    confMatVal = confusionMatrix(factor(glm.predVal), factor(res$validate[,'HeartDisease']))
+    
+    predLogist$confMatTrain = as.data.frame.matrix(confMat$table)
+    predLogist$confMatVal = as.data.frame.matrix(confMatVal$table)
+    predLogist$accuracyTrain = confMat$overall['Accuracy']
+    predLogist$accuracyVal = confMatVal$overall['Accuracy']
+
+  })
+  
+  output$trainingMatrix <- renderTable({
+    logisPred()
+    predLogist$confMatTrain
+  }, rownames = TRUE)
+  
+  output$valMatrix <- renderTable({
+    predLogist$confMatVal
+  }, rownames = TRUE)
+  
+  
+  output$trainingAcc <- renderValueBox({
+    valueBox(
+      paste(round(predLogist$accuracyTrain, 4) * 100, "%"), "Training accuracy", icon = icon(accIcon(predLogist$accuracyTrain), lib = "glyphicon"),
+      color = accColor(predLogist$accuracyTrain)
+    )
+  })
+  
+  output$valAcc <- renderValueBox({
+    valueBox(
+      paste(round(predLogist$accuracyVal, 4) * 100, "%"), "Validation accuracy", icon = icon(accIcon(predLogist$accuracyVal), lib = "glyphicon"),
+      color = accColor(predLogist$accuracyVal)
+    )
+  })
+  
+  accColor = function(accuracy){
+    if (accuracy  > 0.8) {
+      return("green")
+    } 
+    if (accuracy > 0.7) {
+      return("yellow")
+    }
+    return("red")
+  }
+  
+  accIcon = function(accuracy){
+    if (accuracy > 0.7) {
+      return("thumbs-up")
+    }
+    return("thumbs-down")
+  }
+  
+  
   
   output$cramer <- renderText({
    v1 = columnA(); v2 = columnB();

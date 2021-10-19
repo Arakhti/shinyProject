@@ -7,6 +7,10 @@ library(lessR)
 library(dplyr)
 library(reshape2)
 library(DiscriMiner)
+
+library('rcompanion')
+library(dummies)
+library(dplyr)
 ##########################################################
 ########## L'interface##################################
 
@@ -21,7 +25,8 @@ ui <- dashboardPage(
                                      tabName = "Uni"),
                          menuSubItem("Bivariées",
                                      tabName = "Bi"),
-                         selected = TRUE)
+                         selected = TRUE),
+                menuItem("Prediction", tabName="Prediction")
                 
                 
                 )
@@ -107,7 +112,7 @@ ui <- dashboardPage(
                                     "ExerciseAngina" = "ExerciseAngina",
                                     "Oldpeak" = "Oldpeak",
                                     "ST_Slope" = "ST_Slope",
-                                    "HeartDisease" = "HeartDisease"))),
+                                    "HeartDisease" = "HeartDisease")))
                
              ),
              fluidRow(
@@ -121,31 +126,22 @@ ui <- dashboardPage(
                                        fluidRow(column(8,align="center", textOutput("correlationRatio")))),
                                 column(8, plotOutput("boxPlotsParalleles")),
                                 
+               ),
+               conditionalPanel(condition = "output.typeOfMix == 'QualiQuali'", 
+                                column(12, plotOutput("qauliVSquali")),
+                                column(12,align="center", textOutput('cramer'))
+                              
                )
 
-             ),
-     tags$hr(),
-     fluidRow(
-       column(4, 
-              selectInput(inputId = "columnC", 
-                          "Variable", 
-                          c("Age" = "Age",
-                            "Sex" = "Sex",
-                            "ChestPainType" = "ChestPainType",
-                            "RestingBP" = "RestingBP",
-                            "Cholesterol" = "Cholesterol",
-                            "FastingBS" = "FastingBS",
-                            "RestingECG" = "RestingECG",
-                            "MaxHR" = "MaxHR",
-                            "ExerciseAngina" = "ExerciseAngina",
-                            "Oldpeak" = "Oldpeak",
-                            "ST_Slope" = "ST_Slope"
-                            ))),
-       column(12, plotOutput("HeartVsall"))
-       
-     )
+             )
+     
             
         
+  ),
+  
+  tabItem(tabName="Prediction",
+    h1("Prediction using SVM"),
+    column(6,tableOutput("new"))
   )
 )
 )
@@ -407,8 +403,16 @@ server <- function(input, output){
   #For prediction
   newdata <- reactive({
     categories= c('Sex', 'ChestPainType','RestingECG', 'ExerciseAngina','ST_Slope')
-    dummy.data.frame(data(), names=categories, sep="_")
-  })
+    continuousVra= c('Age', "RestingBP", "Cholesterol", "MaxHR", "Oldpeak")
+    data=dummy.data.frame(data(), names=categories, sep="_")
+    for(i in continuousVra) {
+      data[, i]=data()[, i] -( mean(data()[, i]) / sd(data()[, i]))
+    }
+    print(data)
+    data
+    
+    
+    })
   
   output$correlation<- renderText({
     x.var = columnA(); y.var = columnB();
@@ -419,12 +423,25 @@ server <- function(input, output){
     input$columnC
   })
   
-  output$HeartVsall <-renderPlot({
-    column <- sym(columnC())
-    ggplot(data())+ geom_bar(aes(x = !!column, fill= factor(HeartDisease)), position=position_dodge())
+
+  
+  output$qauliVSquali <- renderPlot({
+    columnA <- sym(columnA())
+    columnB <- sym(columnB())
+    ggplot(data())+ geom_bar(aes(x = !!columnA, fill= factor(!!columnB)), position=position_dodge())
+    
+    
+    
   })
   
+  output$cramer <- renderText({
+   v1 = columnA(); v2 = columnB();
+    paste("La valeur du test de Cramer est: ", cramerV(data()[, v1], data()[, v2], bias.correct = TRUE))
+  })
   
+  output$new <- renderTable({
+         newdata()#it's just a test
+  })
 }
 
 # Association interface & commandes

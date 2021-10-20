@@ -74,18 +74,7 @@ ui <- dashboardPage(
               column(4, 
                      selectInput(inputId = "column1", 
                                  "Colonne", 
-                                 c("Age" = "Age",
-                                   "Sex" = "Sex",
-                                   "ChestPainType" = "ChestPainType",
-                                   "RestingBP" = "RestingBP",
-                                   "Cholesterol" = "Cholesterol",
-                                   "FastingBS" = "FastingBS",
-                                   "RestingECG" = "RestingECG",
-                                   "MaxHR" = "MaxHR",
-                                   "ExerciseAngina" = "ExerciseAngina",
-                                   "Oldpeak" = "Oldpeak",
-                                   "ST_Slope" = "ST_Slope",
-                                   "HeartDisease" = "HeartDisease")))
+                                 columnslist))
             ),
             fluidRow(
               column(6, plotOutput("gender")),
@@ -108,33 +97,11 @@ ui <- dashboardPage(
                column(4, 
                       selectInput(inputId = "columnA", 
                                   "Variable 1", 
-                                  c("Age" = "Age",
-                                    "Sex" = "Sex",
-                                    "ChestPainType" = "ChestPainType",
-                                    "RestingBP" = "RestingBP",
-                                    "Cholesterol" = "Cholesterol",
-                                    "FastingBS" = "FastingBS",
-                                    "RestingECG" = "RestingECG",
-                                    "MaxHR" = "MaxHR",
-                                    "ExerciseAngina" = "ExerciseAngina",
-                                    "Oldpeak" = "Oldpeak",
-                                    "ST_Slope" = "ST_Slope",
-                                    "HeartDisease" = "HeartDisease"))),
+                                  columnslist)),
                column(4, 
                       selectInput(inputId = "columnB", 
                                   "Variable 2", 
-                                  c("Age" = "Age",
-                                    "Sex" = "Sex",
-                                    "ChestPainType" = "ChestPainType",
-                                    "RestingBP" = "RestingBP",
-                                    "Cholesterol" = "Cholesterol",
-                                    "FastingBS" = "FastingBS",
-                                    "RestingECG" = "RestingECG",
-                                    "MaxHR" = "MaxHR",
-                                    "ExerciseAngina" = "ExerciseAngina",
-                                    "Oldpeak" = "Oldpeak",
-                                    "ST_Slope" = "ST_Slope",
-                                    "HeartDisease" = "HeartDisease")))
+                                  columnslist))
                
              ),
              fluidRow(
@@ -205,6 +172,12 @@ ui <- dashboardPage(
                  fluidRow(valueBoxOutput("valAcc")),
                  p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
                  fluidRow(tableOutput("valMatrix"))
+          ),
+          fluidRow(
+            column(4, verbatimTextOutput("summRegModel")),
+            column(4, plotOutput("regModel2")),
+            column(4, plotOutput("regModel5"))
+            
           )
   )
 )
@@ -502,7 +475,8 @@ server <- function(input, output){
   predLogist <- reactiveValues(confMatTrain = NULL,
                                accuracyTrain = NULL,
                                confMatVal = NULL,
-                               accuracyVal = NULL)
+                               accuracyVal = NULL,
+                               regressionModel = NULL)
   
 
   logistColumns <- eventReactive(input$logistColumns, {
@@ -532,12 +506,11 @@ server <- function(input, output){
     df = cbind(df, HeartDisease = res$train[,'HeartDisease'])
     # train model
     columsForRegression = paste(logistColumns(), collapse = " + ")
-    print(columsForRegression)
     myFormula <- as.formula(paste("HeartDisease ~ ", columsForRegression))
     
     glm.fit <- glm(myFormula,
                    data = df, family = binomial)
-    
+
     glm.probs <- predict(glm.fit,type = "response")
     glm.pred <- ifelse(glm.probs > 0.5, 1, 0)
     confMat = confusionMatrix(factor(glm.pred), factor(res$train[,'HeartDisease']))
@@ -558,6 +531,7 @@ server <- function(input, output){
     predLogist$confMatVal = as.data.frame.matrix(confMatVal$table)
     predLogist$accuracyTrain = confMat$overall['Accuracy']
     predLogist$accuracyVal = confMatVal$overall['Accuracy']
+    predLogist$regressionModel = glm.fit
 
   })
   
@@ -584,6 +558,19 @@ server <- function(input, output){
       color = accColor(predLogist$accuracyVal)
     )
   })
+  
+  output$regModel5 <- renderPlot({
+    plot(predLogist$regressionModel, which=c(5))
+  })
+  
+  output$regModel2 <- renderPlot({
+    plot(predLogist$regressionModel, which=c(2))
+  })
+  
+  output$summRegModel <- renderPrint({
+    print(summary(predLogist$regressionModel))
+  })
+
   
   accColor = function(accuracy){
     if (accuracy  > 0.8) {

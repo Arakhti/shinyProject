@@ -61,7 +61,6 @@ ui <- dashboardPage(
             h1("Chargement des données"),
             fileInput(inputId = "datafile", label = "Choisissez un fichier CSV",
                       accept = c("text/plain", ".csv")),
-            checkboxInput("header", "Header", TRUE),
             dataTableOutput("contents")
             
             
@@ -113,7 +112,7 @@ ui <- dashboardPage(
                                 column(4, 
                                        fluidRow(column(8, tableOutput("statsSummaryBivar"))),
                                        fluidRow(column(8,align="center", textOutput("correlationRatio")))),
-                                column(8, plotOutput("boxPlotsParalleles")),
+                                column(8, plotOutput("boxPlotsParalleles"))
                                 
                ),
                conditionalPanel(condition = "output.typeOfMix == 'QualiQuali'", 
@@ -148,7 +147,7 @@ ui <- dashboardPage(
     column(6,
            fluidRow(valueBoxOutput("SVMvalAcc")),
            p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
-           fluidRow(tableOutput("SVMvalMatrix")),
+           fluidRow(tableOutput("SVMvalMatrix"))
            
     ),
     fluidRow(
@@ -204,11 +203,11 @@ server <- function(input, output){
     
     req(input$datafile)
     
-     read.csv(input$datafile$datapath, header = input$header, check.names = FALSE)
+     read.csv(input$datafile$datapath, header = TRUE, check.names = FALSE)
   },  options = list(scrollX = TRUE , dom = 't'))
   
   data <- reactive({
-    read.csv(input$datafile$datapath, header = input$header, check.names = FALSE)
+    read.csv(input$datafile$datapath, header = TRUE, check.names = FALSE)
   })
   
   columnChosen <- eventReactive(input$column1, {
@@ -585,8 +584,8 @@ predSvm <- reactiveValues(SVMconfMatTrain = NULL,
                                SVMaccuracyTrain = NULL,
                                SVMconfMatVal = NULL,
                                SVMaccuracyVal = NULL,
-                               SVMModel = NULL,
-                
+                               SVMModel = NULL
+              
                               )
   
 svmColumns <- eventReactive(input$svmColumns, {

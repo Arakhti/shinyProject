@@ -61,7 +61,6 @@ ui <- dashboardPage(
             h1("Chargement des données"),
             fileInput(inputId = "datafile", label = "Choisissez un fichier CSV",
                       accept = c("text/plain", ".csv")),
-            checkboxInput("header", "Header", TRUE),
             dataTableOutput("contents")
             
             
@@ -200,11 +199,11 @@ server <- function(input, output){
     
     req(input$datafile)
     
-     read.csv(input$datafile$datapath, header = input$header, check.names = FALSE)
+     read.csv(input$datafile$datapath, header = TRUE, check.names = FALSE)
   },  options = list(scrollX = TRUE , dom = 't'))
   
   data <- reactive({
-    read.csv(input$datafile$datapath, header = input$header, check.names = FALSE)
+    read.csv(input$datafile$datapath, header = TRUE, check.names = FALSE)
   })
   
   columnChosen <- eventReactive(input$column1, {
@@ -601,7 +600,8 @@ svmColumns <- eventReactive(input$svmColumns, {
 
 svmPred <- reactive({
   n=dim(data())[1]
-  index = sample(n, 0.7 * n)
+  set.seed(1)
+  index = sample(n, 0.75 * n)
   trainingSet = data()[index, ]
   valSet = data()[-index, ]
   head(valSet)

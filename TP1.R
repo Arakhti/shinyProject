@@ -148,7 +148,11 @@ ui <- dashboardPage(
     column(6,
            fluidRow(valueBoxOutput("SVMvalAcc")),
            p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
-           fluidRow(tableOutput("SVMvalMatrix"))
+           fluidRow(tableOutput("SVMvalMatrix")),
+           
+    ),
+    fluidRow(
+      column(12,align="center", verbatimTextOutput("summSVModel"))
     )
   ),
   tabItem(tabName="logit",
@@ -436,20 +440,7 @@ server <- function(input, output){
     options(scipen=0)
   })
 
-  
-  #For prediction
-  newdata <- reactive({
-    categories= c('Sex', 'ChestPainType','RestingECG', 'ExerciseAngina','ST_Slope')
-    continuousVra= c('Age', "RestingBP", "Cholesterol", "MaxHR", "Oldpeak")
-    data=dummy.data.frame(data(), names=categories, sep="_")
-    for(i in continuousVra) {
-      data[, i]=data()[, i] -( mean(data()[, i]) / sd(data()[, i]))
-    }
-    print(data)
-    data
-    
-    
-    })
+
   
   output$correlation<- renderText({
     x.var = columnA(); y.var = columnB();
@@ -593,7 +584,10 @@ server <- function(input, output){
 predSvm <- reactiveValues(SVMconfMatTrain = NULL,
                                SVMaccuracyTrain = NULL,
                                SVMconfMatVal = NULL,
-                               SVMaccuracyVal = NULL)
+                               SVMaccuracyVal = NULL,
+                               SVMModel = NULL,
+                
+                              )
   
 svmColumns <- eventReactive(input$svmColumns, {
     input$svmColumns
@@ -601,10 +595,10 @@ svmColumns <- eventReactive(input$svmColumns, {
 
 svmPred <- reactive({
   n=dim(data())[1]
-  index = sample(n, 0.7 * n)
+  index = sample(n, 0.75 * n)
   trainingSet = data()[index, ]
   valSet = data()[-index, ]
-  head(valSet)
+ 
   
   ### Training  ###
   dfWithoutHeartDisease = subset(trainingSet, select = -c(HeartDisease))
@@ -633,6 +627,7 @@ svmPred <- reactive({
   svm.pred <- ifelse(pred > 0.5, 1, 0)
   Test.mod <- cbind(trainingSet, svm.pred)
   confMat=confusionMatrix(factor(Test.mod$svm.pred), factor(Test.mod$HeartDisease))
+  p=plot(svm.model, data=df.training)
   
   ##############Testing the svm model#######################
   predVal <- predict(svm.model, newdata=df.val, type = "response")
@@ -646,6 +641,7 @@ svmPred <- reactive({
   predSvm$SVMconfMatVal = as.data.frame.matrix(confMatVal$table)
   predSvm$SVMaccuracyTrain = confMat$overall['Accuracy']
   predSvm$SVMaccuracyVal = confMatVal$overall['Accuracy']
+  predSvm$SVMModel= svm.model
   
   
   
@@ -674,6 +670,12 @@ output$SVMvalAcc <- renderValueBox({
     color = accColor(predSvm$SVMaccuracyVal)
   )
 })
+
+output$summSVModel <- renderPrint({
+  print(summary(predSvm$SVMModel))
+})
+
+
 
   
   

@@ -600,21 +600,42 @@ svmColumns <- eventReactive(input$svmColumns, {
   })
 
 svmPred <- reactive({
-  n=dim(newdata())[1]
+  n=dim(data())[1]
   index = sample(n, 0.7 * n)
-  trainingSet = newdata()[index, ]
-  valSet = newdata()[-index, ]
+  trainingSet = data()[index, ]
+  valSet = data()[-index, ]
   head(valSet)
+  
+  ### Training  ###
+  dfWithoutHeartDisease = subset(trainingSet, select = -c(HeartDisease))
+  # convert all columns to numeric
+  matrix <- data.matrix(data.frame(unclass(dfWithoutHeartDisease)))
+  # normalize data
+  df.training = data.frame(scale(matrix))
+  df.training = cbind(df.training, HeartDisease = trainingSet[,'HeartDisease'])
+  
+  
+  dfValWithoutHeartDisease = subset(valSet, select = -c(HeartDisease))
+  # convert all columns to numeric
+  Valmatrix <- data.matrix(data.frame(unclass(dfValWithoutHeartDisease)))
+  # normalize data
+  df.val = data.frame(scale(Valmatrix))
+  df.val = cbind(df.val, HeartDisease = valSet[,'HeartDisease'])
+  
+  
+  
+  columsForSVM = paste(svmColumns(), collapse = " + ")
+  myFormula <- as.formula(paste("HeartDisease ~ ", columsForSVM))
  
   # build svm  model
-  svm.model <- svm(HeartDisease~., data = trainingSet)
+  svm.model <- svm(myFormula, data = df.training)
   pred <- predict(svm.model, type = "response")
   svm.pred <- ifelse(pred > 0.5, 1, 0)
   Test.mod <- cbind(trainingSet, svm.pred)
   confMat=confusionMatrix(factor(Test.mod$svm.pred), factor(Test.mod$HeartDisease))
   
   ##############Testing the svm model#######################
-  predVal <- predict(svm.model, newdata=valSet, type = "response")
+  predVal <- predict(svm.model, newdata=df.val, type = "response")
   svm.predVal <- ifelse(predVal > 0.5, 1, 0)
   Test.modVal <- cbind(valSet, svm.predVal)
   confMatVal=confusionMatrix(factor(Test.modVal$svm.predVal), factor(Test.modVal$HeartDisease))

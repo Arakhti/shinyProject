@@ -12,6 +12,7 @@ library(caret)
 library('rcompanion')
 library(dummies)
 library(dplyr)
+library(e1071)
 
 
 columnslist <- c("Age" = "Age",
@@ -45,6 +46,7 @@ ui <- dashboardPage(
                 menuItem("Prediction", tabName="Prediction",
                          menuSubItem("Régression Logistique",
                                      tabName = "logit"),
+                         menuSubItem("SVM", tabName = "SVM"),
                          
                          selected = TRUE)
                 
@@ -160,8 +162,27 @@ ui <- dashboardPage(
   ),
   
   tabItem(tabName="SVM",
-    h1("Prediction using SVM"),
-    column(6,tableOutput("new"))
+    h1("SVM"),
+    h4("Prédiction de HeartDisease en fonction des autres variables",tags$br(),
+       "Le dataset est divisé en training set (75%) et validation set (25%)"),
+    checkboxGroupInput(
+      "svmColumns",
+      "Colonnes utilisées pour le svm",
+      choices = columnslist[-12],
+      selected = columnslist[-12],
+      inline = TRUE
+    ),
+    tags$hr(),
+    column(6,
+           fluidRow(valueBoxOutput("SVMtrainingAcc")),
+           p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
+           fluidRow(tableOutput("SVMtrainingMatrix"))
+    ),
+    column(6,
+           fluidRow(valueBoxOutput("SVMvalAcc")),
+           p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
+           fluidRow(tableOutput("SVMvalMatrix"))
+    )
   ),
   tabItem(tabName="logit",
           h1("Régression logistique"),
@@ -580,6 +601,80 @@ server <- function(input, output){
     }
     return("thumbs-down")
   }
+
+##############################SVM##################################
+predSvm <- reactiveValues(SVMconfMatTrain = NULL,
+                               SVMaccuracyTrain = NULL,
+                               SVMconfMatVal = NULL,
+                               SVMaccuracyVal = NULL)
+  
+svmColumns <- eventReactive(input$svmColumns, {
+    input$svmColumns
+  })
+
+svmPred <- reactive({
+  n=dim(newdata())[1]
+  index = sample(n, 0.7 * n)
+  trainingSet = newdata()[index, ]
+  valSet = newdata()[-index, ]
+  head(valSet)
+ 
+  # build svm  model
+  svm.model <- svm(HeartDisease~., data = trainingSet)
+  pred <- predict(svm.model, type = "response")
+  svm.pred <- ifelse(pred > 0.5, 1, 0)
+  Test.mod <- cbind(trainingSet, svm.pred)
+  confMat=confusionMatrix(factor(Test.mod$svm.pred), factor(Test.mod$HeartDisease))
+  
+  ##############Testing the svm model#######################
+  predVal <- predict(svm.model, newdata=valSet, type = "response")
+  svm.predVal <- ifelse(predVal > 0.5, 1, 0)
+  Test.modVal <- cbind(valSet, svm.predVal)
+  confMatVal=confusionMatrix(factor(Test.modVal$svm.predVal), factor(Test.modVal$HeartDisease))
+  
+  #####################Stat of the model############
+  
+  predSvm$SVMconfMatTrain = as.data.frame.matrix(confMat$table)
+  predSvm$SVMconfMatVal = as.data.frame.matrix(confMatVal$table)
+  predSvm$SVMaccuracyTrain = confMat$overall['Accuracy']
+  predSvm$SVMaccuracyVal = confMatVal$overall['Accuracy']
+  
+  
+  
+})
+
+output$SVMtrainingMatrix <- renderTable({
+  svmPred()
+  predSvm$SVMconfMatTrain
+}, rownames = TRUE)
+
+output$SVMvalMatrix <- renderTable({
+  predSvm$SVMconfMatVal
+}, rownames = TRUE)
+
+
+output$SVMtrainingAcc <- renderValueBox({
+  valueBox(
+    paste(round(predSvm$SVMaccuracyTrain, 4) * 100, "%"), "Training accuracy", icon = icon(accIcon(predSvm$SVMaccuracyTrain), lib = "glyphicon"),
+    color = accColor(predSvm$SVMaccuracyTrain)
+  )
+})
+
+output$SVMvalAcc <- renderValueBox({
+  valueBox(
+    paste(round(predSvm$SVMaccuracyVal, 4) * 100, "%"), "Validation accuracy", icon = icon(accIcon(predSvm$SVMaccuracyVal), lib = "glyphicon"),
+    color = accColor(predSvm$SVMaccuracyVal)
+  )
+})
+
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   
@@ -588,9 +683,6 @@ server <- function(input, output){
     paste("La valeur du test de Cramer est: ", cramerV(data()[, v1], data()[, v2], bias.correct = TRUE))
   })
   
-  output$new <- renderTable({
-         newdata()#it's just a test
-  })
 }
 
 # Association interface & commandes

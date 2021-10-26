@@ -143,12 +143,12 @@ ui <- dashboardPage(
   ),
   
   tabItem(tabName="SVM",
-    h1("SVM"),
+    h1("Support Vector Machine"),
     h4("Prédiction de HeartDisease en fonction des autres variables",tags$br(),
        "Le dataset est divisé en training set (75%) et test set (25%)"),
     checkboxGroupInput(
       "svmColumns",
-      "Colonnes utilisées pour le svm",
+      "Colonnes utilisées pour le SVM",
       choices = columnslist[-12],
       selected = columnslist[-12],
       inline = TRUE
@@ -421,7 +421,7 @@ server <- function(input, output){
     columnQuanti <- quantiQualiValues[[3]]
     if (affiche) {
 
-      paste("<font color=\"#FF0000\"><b>","Rapport de correlation: ","<font color=\"#FF0000\"><b>", format(round(corRatio(data()[,columnQuanti], data()[,columnQuali]), 4), nsmall = 4))
+      paste("<font color=\"#FF0000\"><b>","Rapport de corrélation : ","<font color=\"#FF0000\"><b>", format(round(corRatio(data()[,columnQuanti], data()[,columnQuali]), 4), nsmall = 4))
     }
     else {
       NULL
@@ -460,7 +460,7 @@ server <- function(input, output){
   
   output$correlation<- renderText({
     x.var = columnA(); y.var = columnB();
-    paste("</br/><font color=\"#FF0000\"><b>","Coefficient de correlation: ","<font color=\"#FF0000\"><b>", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
+    paste("</br/><font color=\"#FF0000\"><b>","Coefficient de corrélation : ","<font color=\"#FF0000\"><b>", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
   })
   
   columnC <- eventReactive(input$columnC, {
@@ -736,7 +736,7 @@ output$SVMvalMatrix <- renderPlot({
   
   output$cramer <- renderText({
    v1 = columnA(); v2 = columnB();
-    paste("</br/><font color=\"#FF0000\"><b>","La valeur du test de Cramer est: ","<font color=\"#FF0000\"><b>", cramerV(data()[, v1], data()[, v2], bias.correct = TRUE))
+    paste("</br/><font color=\"#FF0000\"><b>","V de Cramer : ","<font color=\"#FF0000\"><b>", cramerV(data()[, v1], data()[, v2], bias.correct = TRUE))
   })
   
 }

@@ -15,6 +15,7 @@ library(dplyr)
 library(e1071)
 
 
+
 columnslist <- c("Age" = "Age",
                         "Sex" = "Sex",
                         "ChestPainType" = "ChestPainType",
@@ -32,7 +33,7 @@ columnslist <- c("Age" = "Age",
 ########## L'interface##################################
 
 ui <- dashboardPage(
-  dashboardHeader(title = "My first APP"),
+  dashboardHeader(title = "Heart Disease"),
   dashboardSidebar(
     sidebarMenu(id = "tabs",
                 menuItem("Chargement des données", tabName = "lireDonnées", icon = icon("readme")),
@@ -43,7 +44,7 @@ ui <- dashboardPage(
                          menuSubItem("Bivariées",
                                      tabName = "Bi"),
                          selected = TRUE),
-                menuItem("Prediction", tabName="Prediction",
+                menuItem("Prediction", tabName="Prediction",icon=icon("fas fa-filter"),
                          menuSubItem("Régression Logistique",
                                      tabName = "logit"),
                          menuSubItem("SVM", tabName = "SVM"),
@@ -55,6 +56,13 @@ ui <- dashboardPage(
 
     ),
   dashboardBody(
+    tags$head(
+      tags$style(HTML("
+      .my_table .table>tbody>tr>td, .table>tbody>tr>th, .table>tfoot>tr>td, .table>tfoot>tr>th, .table>thead>tr>td, .table>thead>tr>th {
+        border-top: 3px solid #6495ED; 
+      },
+    "))
+    ),
     tabItems(
       
      tabItem(tabName = "lireDonnées",
@@ -69,15 +77,16 @@ ui <- dashboardPage(
      
      tabItem(tabName="Uni",
             h1("Statistiques univariées"),
+            tags$hr(),
             fluidRow(
               column(4, 
                      selectInput(inputId = "column1", 
-                                 "Colonne", 
+                                 "Variable", 
                                  columnslist))
             ),
             fluidRow(
               column(6, plotOutput("gender")),
-              column(6, tableOutput("table_quali")),
+              column(6,class="my_table" ,tableOutput("table_quali")),
               conditionalPanel(
                 condition = "input.column1 == 'Age' || input.column1 == 'RestingBP'  || input.column1 == 'Cholesterol' || input.column1 == 'MaxHR' ||  input.column1 == 'Oldpeak'",
                 column(6, plotOutput("boxPlot"))
@@ -87,11 +96,12 @@ ui <- dashboardPage(
             ),
             tags$hr(),
             fluidRow(
-              column(12,align="center", tableOutput("summary"))
+              column(12,align="center",class="my_table", tableOutput("summary"))
             )
           ),
      tabItem(tabName="Bi",
              h1("Statistiques Bivariées"),
+             tags$hr(),
              fluidRow(
                column(4, 
                       selectInput(inputId = "columnA", 
@@ -106,12 +116,12 @@ ui <- dashboardPage(
              fluidRow(
                conditionalPanel(condition = "output.typeOfMix == 'QuantiQuanti'", 
                                 column(12, plotOutput("nuagePoints")), 
-                                column(12,align="center",textOutput("correlation"))
+                                column(12,class="cor",align="center",htmlOutput("correlation"))
                ),
                conditionalPanel(condition = "output.typeOfMix == 'QuantiQuali'", 
                                 column(4, 
-                                       fluidRow(column(8, tableOutput("statsSummaryBivar"))),
-                                       fluidRow(column(8,align="center", textOutput("correlationRatio")))),
+                                       fluidRow(column(8, class="my_table",tableOutput("statsSummaryBivar"))),
+                                       fluidRow(column(8,align="center", htmlOutput("correlationRatio")))),
                                 column(8, plotOutput("boxPlotsParalleles"))
                                 
                ),
@@ -130,7 +140,7 @@ ui <- dashboardPage(
   tabItem(tabName="SVM",
     h1("SVM"),
     h4("Prédiction de HeartDisease en fonction des autres variables",tags$br(),
-       "Le dataset est divisé en training set (75%) et validation set (25%)"),
+       "Le dataset est divisé en training set (75%) et test set (25%)"),
     checkboxGroupInput(
       "svmColumns",
       "Colonnes utilisées pour le svm",
@@ -141,23 +151,25 @@ ui <- dashboardPage(
     tags$hr(),
     column(6,
            fluidRow(valueBoxOutput("SVMtrainingAcc")),
-           p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
-           fluidRow(tableOutput("SVMtrainingMatrix"))
+           p(strong(h4("Matrice de confusion Training Set", align="center"))),
+           fluidRow(plotOutput("svmconf"))
     ),
     column(6,
            fluidRow(valueBoxOutput("SVMvalAcc")),
-           p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
-           fluidRow(tableOutput("SVMvalMatrix"))
+           p(strong(h4("Matrice de confusion Test Set", align="center"))),
+           fluidRow(plotOutput("SVMvalMatrix"),
+           tags$hr())
            
     ),
+    tags$hr(),
     fluidRow(
-      column(12,align="center", verbatimTextOutput("summSVModel"))
+      column(12,align="center", verbatimTextOutput("summSVModel")),
     )
   ),
   tabItem(tabName="logit",
           h1("Régression logistique"),
           h4("Prédiction de HeartDisease en fonction des autres variables",tags$br(),
-             "Le dataset est divisé en training set (75%) et validation set (25%)"),
+             "Le dataset est divisé en training set (75%) et test set (25%)"),
           checkboxGroupInput(
             "logistColumns",
             "Colonnes utilisées pour la régression logistique",
@@ -168,14 +180,16 @@ ui <- dashboardPage(
           tags$hr(),
           column(6,
                  fluidRow(valueBoxOutput("trainingAcc")),
-                 p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
-                 fluidRow(tableOutput("trainingMatrix"))
+                 p(strong(h4("Matrice de confusion Training Set", align="center"))),
+                 fluidRow(plotOutput("trainingMatrix"))
                  ),
           column(6,
                  fluidRow(valueBoxOutput("valAcc")),
-                 p(strong(h4("Matrice de confusion prédits (lignes) / actuels (colonnes)"))),
-                 fluidRow(tableOutput("valMatrix"))
+                 p(strong(h4("Matrice de confusion Test Set", align="center"))),
+                 fluidRow(plotOutput("valMatrix"),
+                 tags$hr())
           ),
+          tags$hr(),
           fluidRow(
             column(4, verbatimTextOutput("summRegModel")),
             column(4, plotOutput("regModel2")),
@@ -404,7 +418,7 @@ server <- function(input, output){
     columnQuanti <- quantiQualiValues[[3]]
     if (affiche) {
 
-      paste("Rapport de correlation : ", format(round(corRatio(data()[,columnQuanti], data()[,columnQuali]), 4), nsmall = 4))
+      paste("<font color=\"#FF0000\"><b>","Rapport de correlation: ","<font color=\"#FF0000\"><b>", format(round(corRatio(data()[,columnQuanti], data()[,columnQuali]), 4), nsmall = 4))
     }
     else {
       NULL
@@ -443,7 +457,7 @@ server <- function(input, output){
   
   output$correlation<- renderText({
     x.var = columnA(); y.var = columnB();
-    paste("coefficient de correlation est:", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
+    paste("<font color=\"#FF0000\"><b>","Coefficient de correlation: ","<font color=\"#FF0000\"><b>", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
   })
   
   columnC <- eventReactive(input$columnC, {
@@ -517,22 +531,36 @@ server <- function(input, output){
     glm.predVal <- ifelse(glm.probsVal > 0.5, 1, 0)
     confMatVal = confusionMatrix(factor(glm.predVal), factor(res$validate[,'HeartDisease']))
     
-    predLogist$confMatTrain = as.data.frame.matrix(confMat$table)
-    predLogist$confMatVal = as.data.frame.matrix(confMatVal$table)
+    predLogist$confMatTrain = as.data.frame(confMat$table)
+    predLogist$confMatVal = as.data.frame(confMatVal$table)
     predLogist$accuracyTrain = confMat$overall['Accuracy']
     predLogist$accuracyVal = confMatVal$overall['Accuracy']
     predLogist$regressionModel = glm.fit
 
   })
   
-  output$trainingMatrix <- renderTable({
+  output$trainingMatrix <- renderPlot({
     logisPred()
-    predLogist$confMatTrain
-  }, rownames = TRUE)
+    ggplot(data =  predLogist$confMatTrain,
+           mapping = aes(x = Reference,
+                         y = Prediction)) +
+      geom_tile(aes(fill = Freq)) +
+      geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+      scale_fill_gradient(low = "cornflowerblue",
+                          high = "green",
+                          trans = "log")
+  })
   
-  output$valMatrix <- renderTable({
-    predLogist$confMatVal
-  }, rownames = TRUE)
+  output$valMatrix <- renderPlot({
+    ggplot(data =  predLogist$confMatVal,
+           mapping = aes(x = Reference,
+                         y = Prediction)) +
+      geom_tile(aes(fill = Freq)) +
+      geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+      scale_fill_gradient(low = "cornflowerblue",
+                          high = "green",
+                          trans = "log")
+  })
   
   
   output$trainingAcc <- renderValueBox({
@@ -544,7 +572,7 @@ server <- function(input, output){
   
   output$valAcc <- renderValueBox({
     valueBox(
-      paste(round(predLogist$accuracyVal, 4) * 100, "%"), "Validation accuracy", icon = icon(accIcon(predLogist$accuracyVal), lib = "glyphicon"),
+      paste(round(predLogist$accuracyVal, 4) * 100, "%"), "Test accuracy", icon = icon(accIcon(predLogist$accuracyVal), lib = "glyphicon"),
       color = accColor(predLogist$accuracyVal)
     )
   })
@@ -584,7 +612,8 @@ predSvm <- reactiveValues(SVMconfMatTrain = NULL,
                                SVMaccuracyTrain = NULL,
                                SVMconfMatVal = NULL,
                                SVMaccuracyVal = NULL,
-                               SVMModel = NULL
+                               SVMModel = NULL,
+                             
               
                               )
   
@@ -634,26 +663,22 @@ svmPred <- reactive({
   Test.modVal <- cbind(valSet, svm.predVal)
   confMatVal=confusionMatrix(factor(Test.modVal$svm.predVal), factor(Test.modVal$HeartDisease))
   
+  
   #####################Stat of the model############
   
-  predSvm$SVMconfMatTrain = as.data.frame.matrix(confMat$table)
-  predSvm$SVMconfMatVal = as.data.frame.matrix(confMatVal$table)
+  predSvm$SVMconfMatTrain = as.data.frame(confMat$table)
+  predSvm$SVMconfMatVal = as.data.frame(confMatVal$table)
   predSvm$SVMaccuracyTrain = confMat$overall['Accuracy']
   predSvm$SVMaccuracyVal = confMatVal$overall['Accuracy']
   predSvm$SVMModel= svm.model
+ 
+
+ 
   
   
   
 })
 
-output$SVMtrainingMatrix <- renderTable({
-  svmPred()
-  predSvm$SVMconfMatTrain
-}, rownames = TRUE)
-
-output$SVMvalMatrix <- renderTable({
-  predSvm$SVMconfMatVal
-}, rownames = TRUE)
 
 
 output$SVMtrainingAcc <- renderValueBox({
@@ -665,7 +690,7 @@ output$SVMtrainingAcc <- renderValueBox({
 
 output$SVMvalAcc <- renderValueBox({
   valueBox(
-    paste(round(predSvm$SVMaccuracyVal, 4) * 100, "%"), "Validation accuracy", icon = icon(accIcon(predSvm$SVMaccuracyVal), lib = "glyphicon"),
+    paste(round(predSvm$SVMaccuracyVal, 4) * 100, "%"), "Test accuracy", icon = icon(accIcon(predSvm$SVMaccuracyVal), lib = "glyphicon"),
     color = accColor(predSvm$SVMaccuracyVal)
   )
 })
@@ -675,11 +700,29 @@ output$summSVModel <- renderPrint({
 })
 
 
+output$svmconf<-renderPlot({
+  svmPred()
+  ggplot(data =  predSvm$SVMconfMatTrain,
+         mapping = aes(x = Reference,
+                       y = Prediction)) +
+    geom_tile(aes(fill = Freq)) +
+    geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+    scale_fill_gradient(low = "cornflowerblue",
+                        high = "green",
+                        trans = "log")
+})
 
-  
-  
-  
-  
+output$SVMvalMatrix <- renderPlot({
+  ggplot(data =  predSvm$SVMconfMatVal,
+         mapping = aes(x = Reference,
+                       y = Prediction)) +
+    geom_tile(aes(fill = Freq)) +
+    geom_text(aes(label = sprintf("%1.0f", Freq)), vjust = 1) +
+    scale_fill_gradient(low = "cornflowerblue",
+                        high = "green",
+                        trans = "log")
+})
+
   
   
   

@@ -127,7 +127,7 @@ ui <- dashboardPage(
                ),
                conditionalPanel(condition = "output.typeOfMix == 'QualiQuali'", 
                                 column(12, plotOutput("qauliVSquali")),
-                                column(12,align="center", textOutput('cramer'))
+                                column(12,align="center", htmlOutput('cramer'))
                               
                )
 
@@ -457,7 +457,7 @@ server <- function(input, output){
   
   output$correlation<- renderText({
     x.var = columnA(); y.var = columnB();
-    paste("<font color=\"#FF0000\"><b>","Coefficient de correlation: ","<font color=\"#FF0000\"><b>", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
+    paste("</br/><font color=\"#FF0000\"><b>","Coefficient de correlation: ","<font color=\"#FF0000\"><b>", cor(data()[, x.var], y = data()[, y.var],use="complete.obs"))
   })
   
   columnC <- eventReactive(input$columnC, {
@@ -622,6 +622,7 @@ svmColumns <- eventReactive(input$svmColumns, {
   })
 
 svmPred <- reactive({
+  set.seed(1)
   n=dim(data())[1]
   index = sample(n, 0.75 * n)
   trainingSet = data()[index, ]
@@ -732,7 +733,7 @@ output$SVMvalMatrix <- renderPlot({
   
   output$cramer <- renderText({
    v1 = columnA(); v2 = columnB();
-    paste("La valeur du test de Cramer est: ", cramerV(data()[, v1], data()[, v2], bias.correct = TRUE))
+    paste("</br/><font color=\"#FF0000\"><b>","La valeur du test de Cramer est: ","<font color=\"#FF0000\"><b>", cramerV(data()[, v1], data()[, v2], bias.correct = TRUE))
   })
   
 }

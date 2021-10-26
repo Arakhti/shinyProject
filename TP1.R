@@ -67,12 +67,17 @@ ui <- dashboardPage(
       
      tabItem(tabName = "lireDonnées",
             h1("Chargement des données"),
-            fileInput(inputId = "datafile", label = "Choisissez un fichier CSV",
-                      accept = c("text/plain", ".csv")),
+            h4("Le dataset utilisé est le Heart Failure Prediction Dataset de Kaggle :", 
+               tags$a(href="https://www.kaggle.com/fedesoriano/heart-failure-prediction", target="_blank", "lien"),
+               tags$br(), "Il comprend au total 918 observations de patients,
+               avec pour chacun différentes données de santé ainsi que la présence ou non d'une maladie cardiaque (HeartDisease)."),
+            tags$br(),
+            fluidRow(
+              column(2, 
+                     # Buton de chargement 'en retard'
+                     actionButton(inputId = "go", label = "Charger le jeu de données"))
+            ),
             dataTableOutput("contents")
-            
-            
-      
            ),
      
      tabItem(tabName="Uni",
@@ -212,17 +217,15 @@ ui <- dashboardPage(
 ###################Serveur########################
 server <- function(input, output){
   
+  data <- eventReactive(input$go, {
+    inFile <- "heart.csv"
+    read.csv(inFile, header = TRUE)
+  })
   
   output$contents <- renderDataTable({
-    
-    req(input$datafile)
-    
-     read.csv(input$datafile$datapath, header = TRUE, check.names = FALSE)
+    data()
   },  options = list(scrollX = TRUE , dom = 't'))
   
-  data <- reactive({
-    read.csv(input$datafile$datapath, header = TRUE, check.names = FALSE)
-  })
   
   columnChosen <- eventReactive(input$column1, {
     input$column1
